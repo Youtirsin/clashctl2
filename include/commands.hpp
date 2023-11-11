@@ -73,7 +73,7 @@ class commands {
     std::cout << "Usage:\n"
                  "'. set_proxy' to set http(s)_proxy\n"
                  "'. unset_proxy' to unset http(s)_proxy\n"
-                 "clashctl <option> [param]...\n"
+                 "~/clashctl/clashctl <option> [param]...\n"
                  "Options:\n"
                  "start           start clash\n"
                  "stop            stop clash\n"
