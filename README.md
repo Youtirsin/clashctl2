@@ -8,7 +8,7 @@
 - cmake
 - curl
 - make
-- gcc
+- g++
 
 ```bash
 # clashctl will be install to ~
