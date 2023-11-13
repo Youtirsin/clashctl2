@@ -49,7 +49,7 @@ class log {
         file() << t;
       }
     } else {
-      if (as_info) {
+      if (m_as_info) {
         std::cout << t;
       } else {
         std::cerr << t;
@@ -67,7 +67,7 @@ class log {
         file() << std::endl;
       }
     } else {
-      if (as_info) {
+      if (m_as_info) {
         std::cout << std::endl;
       } else {
         std::cerr << std::endl;
@@ -77,7 +77,7 @@ class log {
   }
 
  private:
-  log(bool as_info_) noexcept : as_info(as_info_) {}
+  log(bool as_info) noexcept : m_as_info(as_info) {}
 
   static log& make_info() noexcept {
     static log l(true);
@@ -95,16 +95,16 @@ class log {
   }
 
   static bool& use_file() noexcept {
-    static bool use_file_ = false;
-    return use_file_;
+    static bool m_use_file = false;
+    return m_use_file;
   }
 
   static bool& enabled() noexcept {
-    static bool enabled_ = true;
-    return enabled_;
+    static bool m_enabled = true;
+    return m_enabled;
   }
 
-  bool as_info;
+  bool m_as_info;
 };
 
 namespace quicky {
