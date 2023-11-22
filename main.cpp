@@ -6,7 +6,7 @@
 int main(int argc, char** argv) {
   try {
     if (!quicky::has_curl()) {
-      quicky::error() << "please install curl." << std::endl;
+      quicky::errorln("please install curl.");
       return 1;
     }
 
@@ -27,11 +27,10 @@ int main(int argc, char** argv) {
     }
 
     if (option == "proxy") {
-      if (argc != 3) {
+      if (argc != 3)
         commands::proxy();
-      } else {
+      else
         commands::proxy(std::stoi(argv[2]));
-      }
       return 0;
     }
 
@@ -42,7 +41,7 @@ int main(int argc, char** argv) {
 
     cmds["help"]();
   } catch (const std::exception& e) {
-    quicky::error() << e.what() << std::endl;
+    quicky::errorln(e.what());
     return 1;
   }
   return 1;

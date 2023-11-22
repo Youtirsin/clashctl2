@@ -8,6 +8,7 @@
 #include <string>
 #include <thread>
 
+#include "log.hpp"
 #include "third-party/httplib.h"
 #include "third-party/nlohmann/json.hpp"
 #include "utils.hpp"
@@ -71,22 +72,14 @@ inline std::vector<std::string> mod_strs() noexcept {
 }
 
 inline std::string mod_str(mode m) noexcept {
-  if (m == mode::DIRECT) {
-    return "DIRECT";
-  }
-  if (m == mode::Proxies) {
-    return "Proxies";
-  }
+  if (m == mode::DIRECT) return "DIRECT";
+  if (m == mode::Proxies) return "Proxies";
   return "";
 }
 
 inline mode str_mod(std::string str) {
-  if (str == "DIRECT") {
-    return mode::DIRECT;
-  }
-  if (str == "Proxies") {
-    return mode::Proxies;
-  }
+  if (str == "DIRECT") return mode::DIRECT;
+  if (str == "Proxies") return mode::Proxies;
   throw std::logic_error("invalid mode string.");
 }
 
@@ -100,18 +93,18 @@ class Controller {
   // 3. connection test
   bool start() noexcept {
     if (!rm_log() || !touch_log()) {
-      log::error() << "failed to prepare log file." << log::endl;
+      log::errorln("failed to prepare log file.");
       return false;
     }
-    log::info() << "starting clash server." << log::endl;
+    log::infoln("failed to prepare log file.");
     if (quicky::run_background(
             m_config->clash_exe + " -d " + m_config->clash_config,
             m_config->clash_log)) {
-      log::error() << "failed to start clash server." << log::endl;
+      log::errorln("failed to start clash server.");
       return false;
     }
     if (!ping()) {
-      log::error() << "clash is not available." << log::endl;
+      log::errorln("clash is not available.");
       stop();
       return false;
     }
@@ -156,37 +149,35 @@ class Controller {
     auto& configFile = m_config->clash_config_file;
 
     if (url.size() < 2) {
-      log::error() << "invalid url" << log::endl;
+      log::errorln("invalid url.");
       return false;
     }
 
     if (quicky::download_file(quicky::trim_url(url), updateFile)) {
-      log::error() << "failed to download config file." << log::endl;
+      log::errorln("failed to download config file.");
       return false;
     }
 
     if (quicky::exists(configFile)) {
-      log::info() << "backing up old config file." << log::endl;
+      log::infoln("backing up old config file.");
       if (!quicky::cp(configFile, configFile + ".backup")) {
-        log::error() << "failed to backup old config file." << log::endl;
+        log::errorln("failed to backup old config file.");
         return false;
       }
     }
 
-    log::info() << "updating config file." << log::endl;
+    log::infoln("updating config file.");
     if (!quicky::cp(updateFile, configFile)) {
-      log::error() << "failed to update config file." << log::endl;
+      log::errorln("failed to update config file.");
       return false;
     }
 
-    log::info() << "testing new config file." << log::endl;
+    log::infoln("testing new config file.");
     if (!reload() || !ping()) {
-      log::error() << "invalid config file. recovering old config file."
-                   << log::endl;
+      log::errorln("invalid config file. recovering old config file.");
       if (quicky::exists(configFile + ".backup")) {
-        if (!quicky::cp(configFile + ".backup", configFile)) {
-          log::error() << "failed to recover old config file." << log::endl;
-        }
+        if (!quicky::cp(configFile + ".backup", configFile))
+          log::errorln("failed to recover old config file.");
       }
       stop();
       return false;
@@ -199,13 +190,12 @@ class Controller {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->proxy_url);
-      if (!res) {
-        throw std::logic_error("failed to send request to get proxy.");
-      }
+      if (!res) throw std::logic_error("failed to send request to get proxy.");
+
       auto j = nlohmann::json::parse(res->body);
       return j["now"].get<std::string>();
     } catch (const std::exception& e) {
-      log::error() << e.what() << log::endl;
+      log::errorln(e.what());
       throw std::logic_error("failed to get proxy.");
     }
   }
@@ -214,13 +204,13 @@ class Controller {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->proxy_url);
-      if (!res) {
+      if (!res)
         throw std::logic_error("failed to send request to get proxies.");
-      }
+
       auto j = nlohmann::json::parse(res->body);
       return j["all"].get<std::vector<std::string>>();
     } catch (const std::exception& e) {
-      log::error() << e.what() << log::endl;
+      log::errorln(e.what());
       throw std::logic_error("failed to get proxies.");
     }
   }
@@ -231,15 +221,14 @@ class Controller {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Put(m_config->proxy_url, data, "text/plain");
       if (!res) {
-        log::error() << "failed to send request to set proxy." << log::endl;
+        log::errorln("failed to send request to set proxy.");
         return false;
       }
-      if (get_proxy() != proxy) {
-        return false;
-      }
+      if (get_proxy() != proxy) return false;
+
     } catch (const std::exception& e) {
-      log::error() << e.what() << log::endl;
-      log::error() << "failed to set proxy." << log::endl;
+      log::errorln(e.what());
+      log::errorln("failed to set proxy.");
       return false;
     }
     return true;
@@ -249,13 +238,12 @@ class Controller {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->mode_url);
-      if (!res) {
-        throw std::logic_error("failed to send request to get mode.");
-      }
+      if (!res) throw std::logic_error("failed to send request to get mode.");
+
       auto j = nlohmann::json::parse(res->body);
       return str_mod(j["now"].get<std::string>());
     } catch (const std::exception& e) {
-      log::error() << e.what() << log::endl;
+      log::errorln(e.what());
       throw std::logic_error("failed to get mode.");
     }
   }
@@ -266,15 +254,14 @@ class Controller {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Put(m_config->mode_url, data, "text/plain");
       if (!res) {
-        log::error() << "failed to send request to set mode." << log::endl;
+        log::errorln("failed to send request to set mode.");
         return false;
       }
-      if (get_mode() != m) {
-        return false;
-      }
+      if (get_mode() != m) return false;
+
     } catch (const std::exception& e) {
-      log::error() << e.what() << log::endl;
-      log::error() << "failed to set mode" << log::endl;
+      log::errorln(e.what());
+      log::errorln("failed to set mode");
       return false;
     }
     return true;
@@ -283,9 +270,7 @@ class Controller {
  private:
   bool rm_log() noexcept {
     if (quicky::exists(m_config->clash_log)) {
-      if (!quicky::rm(m_config->clash_log)) {
-        return false;
-      }
+      if (!quicky::rm(m_config->clash_log)) return false;
     }
     return true;
   }

@@ -20,13 +20,13 @@ class commands {
   static void update(const std::string& url) {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
-    quicky::info() << "updating config." << std::endl;
+    quicky::infoln("updating config.");
     if (!controller.update(url)) {
-      quicky::error() << "failed to update from url: " << std::endl;
-      quicky::error() << url << std::endl;
+      quicky::errorln("failed to update from url: ");
+      quicky::errorln(url);
       return;
     }
-    quicky::info() << "updated config." << std::endl;
+    quicky::infoln("updated config.");
   }
 
   static void proxy(int page = 1) {
@@ -36,27 +36,25 @@ class commands {
     auto proxy = controller.get_proxy();
     auto proxies = controller.get_proxies();
     if (proxies.size() < (page - 1) * 10) {
-      quicky::error() << "invalid page idx." << std::endl;
+      quicky::errorln("invalid page idx.");
       return;
     }
     for (int i = (page - 1) * 10; i < page * 10 && i < proxies.size(); ++i) {
-      if (proxies[i] == proxy) {
+      if (proxies[i] == proxy)
         std::cout << i << ". " << proxies[i] << " (current)" << std::endl;
-      } else {
+      else
         std::cout << i << ". " << proxies[i] << std::endl;
-      }
     }
     int idx;
-    quicky::info() << "select the proxy: " << std::endl;
+    quicky::infoln("select the proxy: ");
     std::cin >> idx;
     if (idx < 0 || idx > proxies.size()) {
-      quicky::error() << "invalid idx." << std::endl;
+      quicky::errorln("invalid idx.");
       return;
     }
-    if (!controller.set_proxy(proxies[idx])) {
-      quicky::error() << "failed to set proxy." << std::endl;
-    }
-    quicky::info() << "current proxy: " << controller.get_proxy() << std::endl;
+    if (!controller.set_proxy(proxies[idx]))
+      quicky::errorln("failed to set proxy.");
+    quicky::infoln("current proxy: ", controller.get_proxy());
   }
 
   commands() noexcept {
@@ -90,11 +88,9 @@ class commands {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
 
-    quicky::info() << "starting clash." << std::endl;
-    if (!controller.reload()) {
-      quicky::error() << "failed to start clash." << std::endl;
-    }
-    quicky::info() << "clash is now available." << std::endl;
+    quicky::infoln("starting clash.");
+    if (!controller.reload()) quicky::errorln("failed to start clash.");
+    quicky::infoln("clash is now available.");
   }
 
   static void stop() noexcept {
@@ -102,28 +98,25 @@ class commands {
     clashctl::Controller controller(config);
 
     controller.stop();
-    quicky::info() << "stopped clash." << std::endl;
+    quicky::infoln("stopped clash.");
   }
 
   static void reload() noexcept {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
 
-    if (!controller.reload()) {
-      quicky::error() << "failed to reload clash." << std::endl;
-    }
-    quicky::info() << "reloaded clash." << std::endl;
+    if (!controller.reload()) quicky::errorln("failed to reload clash.");
+    quicky::infoln("reloaded clash.");
   }
 
   static void ping() noexcept {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
 
-    if (!controller.ping()) {
-      quicky::info() << "clash is not available." << std::endl;
-    } else {
-      quicky::info() << "clash is available." << std::endl;
-    }
+    if (!controller.ping())
+      quicky::infoln("clash is not available.");
+    else
+      quicky::infoln("clash is available.");
   }
 
   static void mode() {
@@ -134,24 +127,21 @@ class commands {
     auto mode_ = mod_str(mode);
     auto modes = clashctl::mod_strs();
     for (int i = 0; i < modes.size(); ++i) {
-      if (modes[i] == mode_) {
+      if (modes[i] == mode_)
         std::cout << i << ". " << modes[i] << " (current)" << std::endl;
-      } else {
+      else
         std::cout << i << ". " << modes[i] << std::endl;
-      }
     }
     int idx;
-    quicky::info() << "select the mode: " << std::endl;
+    quicky::infoln("select the mode: ");
     std::cin >> idx;
     if (idx < 0 || idx > modes.size()) {
-      quicky::error() << "invalid idx." << std::endl;
+      quicky::errorln("invalid idx.");
       return;
     }
-    if (!controller.set_mode(clashctl::str_mod(modes[idx]))) {
-      quicky::error() << "failed to set mode to " << modes[idx] << std::endl;
-    }
-    quicky::info() << "current mode: "
-                   << clashctl::mod_str(controller.get_mode()) << std::endl;
+    if (!controller.set_mode(clashctl::str_mod(modes[idx])))
+      quicky::error("failed to set mode to ", modes[idx]);
+    quicky::info("current mode: ", clashctl::mod_str(controller.get_mode()));
   }
 
  private:
