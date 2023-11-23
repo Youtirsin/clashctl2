@@ -69,9 +69,10 @@ class commands {
  private:
   static void help() noexcept {
     std::cout << "Usage:\n"
-                 "'. set_proxy' to set http(s)_proxy\n"
-                 "'. unset_proxy' to unset http(s)_proxy\n"
+                 "'. ~/clashctl/set_proxy' to set http(s)_proxy\n"
+                 "'. ~/clashctl/unset_proxy' to unset http(s)_proxy\n"
                  "~/clashctl/clashctl <option> [param]...\n"
+
                  "Options:\n"
                  "start           start clash\n"
                  "stop            stop clash\n"
