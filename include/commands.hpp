@@ -89,8 +89,10 @@ class commands {
     clashctl::Controller controller(config);
 
     quicky::infoln("starting clash.");
-    if (!controller.reload()) quicky::errorln("failed to start clash.");
-    quicky::infoln("clash is now available.");
+    if (!controller.reload())
+      quicky::errorln("failed to start clash.");
+    else
+      quicky::infoln("clash is now available.");
   }
 
   static void stop() noexcept {

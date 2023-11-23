@@ -96,7 +96,7 @@ class Controller {
       log::errorln("failed to prepare log file.");
       return false;
     }
-    log::infoln("failed to prepare log file.");
+    log::infoln("starting clash server.");
     if (quicky::run_background(
             m_config->clash_exe + " -d " + m_config->clash_config,
             m_config->clash_log)) {
