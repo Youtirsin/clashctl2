@@ -91,15 +91,13 @@ class Controller {
   // 1. prepare empty log file for clash
   // 2. run clash background
   // 3. connection test
-  bool start() noexcept {
+  bool start() const noexcept {
     if (!rm_log() || !touch_log()) {
       log::errorln("failed to prepare log file.");
       return false;
     }
     log::infoln("starting clash server.");
-    if (quicky::run_background(
-            m_config->clash_exe + " -d " + m_config->clash_config,
-            m_config->clash_log)) {
+    if (quicky::run_background(m_config->clash_exe + " -d " + m_config->clash_config, m_config->clash_log)) {
       log::errorln("failed to start clash server.");
       return false;
     }
@@ -113,11 +111,11 @@ class Controller {
 
   // stop clash
   // kill clash running background
-  void stop() noexcept { quicky::kill(m_config->clash_exe); }
+  void stop() const noexcept { quicky::kill(m_config->clash_exe); }
 
   // reload clash
   // call stop and start
-  bool reload() noexcept {
+  bool reload() const noexcept {
     stop();
     return start();
   }
@@ -126,7 +124,7 @@ class Controller {
   // 1. set http proxy
   // 2. visit google
   // 3. unset http proxy
-  bool ping() noexcept {
+  bool ping() const noexcept {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     setenv("http_proxy", m_config->proxy_endpoint.c_str(), 1);
     setenv("https_proxy", m_config->proxy_endpoint.c_str(), 1);
@@ -144,7 +142,7 @@ class Controller {
   // 3. apply new config file
   // 4. test connection by calling reload and ping
   // 5. stop the clash running for testing
-  bool update(const std::string& url) noexcept {
+  bool update(const std::string& url) const noexcept {
     auto& updateFile = m_config->update_temp_file;
     auto& configFile = m_config->clash_config_file;
 
@@ -186,7 +184,7 @@ class Controller {
     return true;
   }
 
-  std::string get_proxy() {
+  std::string get_proxy() const {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->proxy_url);
@@ -200,7 +198,7 @@ class Controller {
     }
   }
 
-  std::vector<std::string> get_proxies() {
+  std::vector<std::string> get_proxies() const {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->proxy_url);
@@ -215,7 +213,7 @@ class Controller {
     }
   }
 
-  bool set_proxy(const std::string& proxy) noexcept {
+  bool set_proxy(const std::string& proxy) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + proxy + "\"}";
       httplib::Client cli(m_config->controller_endpoint);
@@ -234,7 +232,7 @@ class Controller {
     return true;
   }
 
-  mode get_mode() {
+  mode get_mode() const {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->mode_url);
@@ -248,7 +246,7 @@ class Controller {
     }
   }
 
-  bool set_mode(mode m) noexcept {
+  bool set_mode(mode m) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + mod_str(m) + "\"}";
       httplib::Client cli(m_config->controller_endpoint);
@@ -268,14 +266,14 @@ class Controller {
   }
 
  private:
-  bool rm_log() noexcept {
+  bool rm_log() const noexcept {
     if (quicky::exists(m_config->clash_log)) {
       if (!quicky::rm(m_config->clash_log)) return false;
     }
     return true;
   }
 
-  bool touch_log() noexcept {
+  bool touch_log() const noexcept {
     return quicky::run("touch " + m_config->clash_log) == 0;
   }
 

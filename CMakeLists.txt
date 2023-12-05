@@ -8,7 +8,3 @@ set(CMAKE_CXX_STANDARD 17)
 include_directories(include)
 
 add_executable(clashctl main.cpp)
-
-# set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-# set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-# include(CPack)
