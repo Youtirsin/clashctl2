@@ -1,20 +1,82 @@
 #pragma once
 
-#include <exception>
 #include <functional>
 #include <iostream>
 #include <string>
-#include <unordered_map>
+#include <map>
+#include <vector>
 
 #include "controller.hpp"
+#include "menu.hpp"
 #include "utils.hpp"
 
+
 class commands {
+ private:
+  struct Opt {
+    std::string name;
+    std::string description;
+    std::function<void()> fn;
+  };
+
  public:
-  static std::unordered_map<std::string, std::function<void()>>&
-  make() noexcept {
-    static commands cmds;
-    return cmds.m_cmds;
+  static std::map<std::string, Opt>& options() noexcept {
+    static auto opts = init_opts();
+    return opts;
+  }
+
+  static void handle(int argc, char** argv) noexcept {
+    quicky::Args::parse(argc, argv);
+    quicky::ExeSelfInfo::parse(argv[0]);
+
+    if (argc == 1) {
+      commands::main();
+      return;
+    }
+
+    const std::string option = argv[1];
+    auto& cmds = commands::options();
+    if(cmds.find(option) == cmds.end())
+      cmds["help"].fn();
+    cmds[option].fn();
+  }
+
+ private:
+  static std::map<std::string, Opt> init_opts() noexcept {
+    std::map<std::string, Opt> opts;
+    opts["help"] = { "help", "show usage", help };
+    opts["start"] = { "start", "start clash", start };
+    opts["stop"] = { "stop", "stop clash", stop };
+    opts["reload"] = { "reload", "reload clash", reload };
+    opts["ping"] = { "ping", "curl google.com", ping };
+    opts["mode"] = { "mode", "select mode", mode };
+    opts["proxy"] = { "proxy", "select proxy", proxy};
+
+    opts["update"] = { "update <url>",
+      "download config from <url> and reload clash",
+      []() {
+        auto& args = quicky::Args::get();
+        if (args.size() < 2) {
+          quicky::errorln("<url> required for update.");
+          return;
+        }
+        update(args[1]);
+      }};
+
+    return opts;
+  }
+
+  static void main() {
+    std::vector<std::string> opts;
+    auto& cmds = options();
+    for (auto&& c : cmds) opts.push_back(c.first);
+
+    Menu menu(opts);
+    menu.on_opt_enter([&](int, const std::string& opt) {
+      cmds[opt].fn();
+      return true;
+    });
+    menu.main();
   }
 
   static void update(const std::string& url) {
@@ -29,60 +91,22 @@ class commands {
     quicky::infoln("updated config.");
   }
 
-  static void proxy(int page = 1) {
-    auto config = clashctl::Config::Default();
-    clashctl::Controller controller(config);
-
-    auto proxy = controller.get_proxy();
-    auto proxies = controller.get_proxies();
-    if (proxies.size() < (page - 1) * 10) {
-      quicky::errorln("invalid page idx.");
-      return;
-    }
-    for (int i = (page - 1) * 10; i < page * 10 && i < proxies.size(); ++i) {
-      if (proxies[i] == proxy)
-        std::cout << i << ". " << proxies[i] << " (current)" << std::endl;
-      else
-        std::cout << i << ". " << proxies[i] << std::endl;
-    }
-    int idx;
-    quicky::infoln("select the proxy: ");
-    std::cin >> idx;
-    if (idx < 0 || idx > proxies.size()) {
-      quicky::errorln("invalid idx.");
-      return;
-    }
-    if (!controller.set_proxy(proxies[idx]))
-      quicky::errorln("failed to set proxy.");
-    quicky::infoln("current proxy: ", controller.get_proxy());
-  }
-
-  commands() noexcept {
-    m_cmds["help"] = help;
-    m_cmds["start"] = start;
-    m_cmds["stop"] = stop;
-    m_cmds["reload"] = reload;
-    m_cmds["ping"] = ping;
-    m_cmds["mode"] = mode;
-  }
-
- private:
   static void help() noexcept {
+    const auto parent_path = quicky::ExeSelfInfo::dir();
+    const auto set_proxy_path = parent_path + "/set_proxy";
+    const auto unset_proxy_path = parent_path + "/unset_proxy";
+    const auto exepath = quicky::ExeSelfInfo::arg0();
     std::cout << "Usage:\n"
-                 "'. ~/clashctl/set_proxy' to set http(s)_proxy\n"
-                 "'. ~/clashctl/unset_proxy' to unset http(s)_proxy\n"
-                 "~/clashctl/clashctl <option> [param]...\n"
+                 "'. " << set_proxy_path << "' to set http(s)_proxy\n"
+                 "'. " << unset_proxy_path << "' to unset http(s)_proxy\n"
+                 << exepath << " <option> [param]...\n"
 
-                 "Options:\n"
-                 "start           start clash\n"
-                 "stop            stop clash\n"
-                 "reload          reload clash\n"
-                 "ping            curl google.com\n"
-                 "update <url>    download config from <url> and reload clash\n"
-                 "mode            select mode\n"
-                 "proxy <page>    select proxy from <page>\n"
-                 "help            show usage"
-              << std::endl;
+                 "Options:\n";
+    auto& cmds = options();
+    for (auto&& c : cmds) {
+      std::cout << std::setw(20) << std::left << c.second.name;
+      std::cout << c.second.description << std::endl;
+    }
   }
 
   static void start() noexcept {
@@ -126,27 +150,46 @@ class commands {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
 
-    auto mode = controller.get_mode();
-    auto mode_ = mod_str(mode);
+    auto mode_ = controller.get_mode();
+    auto mode = mod_str(mode_);
+
     auto modes = clashctl::mod_strs();
-    for (int i = 0; i < modes.size(); ++i) {
-      if (modes[i] == mode_)
-        std::cout << i << ". " << modes[i] << " (current)" << std::endl;
-      else
-        std::cout << i << ". " << modes[i] << std::endl;
-    }
-    int idx;
-    quicky::infoln("select the mode: ");
-    std::cin >> idx;
-    if (idx < 0 || idx > modes.size()) {
-      quicky::errorln("invalid idx.");
-      return;
-    }
-    if (!controller.set_mode(clashctl::str_mod(modes[idx])))
-      quicky::error("failed to set mode to ", modes[idx]);
-    quicky::info("current mode: ", clashctl::mod_str(controller.get_mode()));
+    Menu menu(modes);
+
+    menu.on_opt_show([&](int, const std::string& opt) {
+      return mode == opt ? opt + " 😎" : opt;
+    });
+
+    menu.on_opt_enter([&](int, const std::string& opt) {
+      if (!controller.set_mode(clashctl::str_mod(opt)))
+        quicky::error("failed to set mode to ", opt);
+      quicky::infoln("current mode: ", clashctl::mod_str(controller.get_mode()));
+      return true;
+    });
+
+    menu.main();
   }
 
- private:
-  std::unordered_map<std::string, std::function<void()>> m_cmds;
+  static void proxy() {
+    auto config = clashctl::Config::Default();
+    clashctl::Controller controller(config);
+
+    auto proxy = controller.get_proxy();
+
+    auto proxies = controller.get_proxies();
+    Menu menu(proxies);
+
+    menu.on_opt_show([&](int, const std::string& opt) {
+      return proxy == opt ? opt + " 😎" : opt;
+    });
+
+    menu.on_opt_enter([&](int, const std::string& opt) {
+      if (!controller.set_proxy(opt))
+        quicky::errorln("failed to set proxy to ", opt);
+      quicky::infoln("current proxy: ", controller.get_proxy());
+      return true;
+    });
+
+    menu.main();
+  }
 };

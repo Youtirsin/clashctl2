@@ -1,8 +1,9 @@
 #pragma once
 
 #include <filesystem>
-#include <fstream>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace quicky {
 // print
@@ -41,6 +42,55 @@ void infoln(T&& val, Rest... rest) noexcept {
   info(std::forward<T>(val), rest...);
   std::cout << std::endl;
 }
+// self info
+class ExeSelfInfo {
+ public:
+  static void parse(const std::string& arg0) noexcept {
+    m_arg0() = arg0;
+    std::filesystem::path p(arg0);
+    m_name() = p.filename();
+    m_dir() = p.parent_path();
+  }
+
+  static std::string& arg0() noexcept { return m_arg0(); }
+
+  static std::string name() noexcept { return m_name(); }
+
+  static std::string dir() noexcept { return m_dir(); }
+
+ private:
+  static std::string& m_name() noexcept {
+    static std::string name;
+    return name;
+  }
+
+  static std::string& m_dir() noexcept {
+    static std::string dir;
+    return dir;
+  }
+
+  static std::string& m_arg0() noexcept {
+    static std::string dir;
+    return dir;
+  }
+};
+
+// args
+class Args {
+ public:
+  static void parse(int argc, char** argv) noexcept {
+    args().clear();
+    for (size_t i = 1; i < argc; ++i) args().push_back(argv[i]);
+  }
+
+  static std::vector<std::string>& get() noexcept { return args(); }
+
+ private:
+  static std::vector<std::string>& args() noexcept {
+    static std::vector<std::string> args;
+    return args;
+  }
+};
 
 // process
 inline int run(const std::string& cmd,
@@ -103,5 +153,4 @@ inline std::string trim_url(const std::string& url) noexcept {
   else
     return url;
 }
-}
-;  // namespace quicky
+};  // namespace quicky
