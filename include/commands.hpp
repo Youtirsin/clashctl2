@@ -99,8 +99,7 @@ class commands {
     std::cout << "Usage:\n"
                  "'. " << set_proxy_path << "' to set http(s)_proxy\n"
                  "'. " << unset_proxy_path << "' to unset http(s)_proxy\n"
-                 << exepath << " <option> [param]...\n"
-
+                 "`" << exepath << "` <option> [param]...\n\n"
                  "Options:\n";
     auto& cmds = options();
     for (auto&& c : cmds) {
