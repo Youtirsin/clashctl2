@@ -93,16 +93,16 @@ class Controller {
   // 3. connection test
   bool start() const noexcept {
     if (!rm_log() || !touch_log()) {
-      log::errorln("failed to prepare log file.");
+      log::get()->errorln("failed to prepare log file.");
       return false;
     }
-    log::infoln("starting clash server.");
+    log::get()->infoln("starting clash server.");
     if (quicky::run_background(m_config->clash_exe + " -d " + m_config->clash_config, m_config->clash_log)) {
-      log::errorln("failed to start clash server.");
+      log::get()->errorln("failed to start clash server.");
       return false;
     }
     if (!ping()) {
-      log::errorln("clash is not available.");
+      log::get()->errorln("clash is not available.");
       stop();
       return false;
     }
@@ -147,35 +147,35 @@ class Controller {
     auto& configFile = m_config->clash_config_file;
 
     if (url.size() < 2) {
-      log::errorln("invalid url.");
+      log::get()->errorln("invalid url.");
       return false;
     }
 
     if (quicky::download_file(quicky::trim_url(url), updateFile)) {
-      log::errorln("failed to download config file.");
+      log::get()->errorln("failed to download config file.");
       return false;
     }
 
     if (quicky::exists(configFile)) {
-      log::infoln("backing up old config file.");
+      log::get()->infoln("backing up old config file.");
       if (!quicky::cp(configFile, configFile + ".backup")) {
-        log::errorln("failed to backup old config file.");
+        log::get()->errorln("failed to backup old config file.");
         return false;
       }
     }
 
-    log::infoln("updating config file.");
+    log::get()->infoln("updating config file.");
     if (!quicky::cp(updateFile, configFile)) {
-      log::errorln("failed to update config file.");
+      log::get()->errorln("failed to update config file.");
       return false;
     }
 
-    log::infoln("testing new config file.");
+    log::get()->infoln("testing new config file.");
     if (!reload() || !ping()) {
-      log::errorln("invalid config file. recovering old config file.");
+      log::get()->errorln("invalid config file. recovering old config file.");
       if (quicky::exists(configFile + ".backup")) {
         if (!quicky::cp(configFile + ".backup", configFile))
-          log::errorln("failed to recover old config file.");
+          log::get()->errorln("failed to recover old config file.");
       }
       stop();
       return false;
@@ -193,7 +193,7 @@ class Controller {
       auto j = nlohmann::json::parse(res->body);
       return j["now"].get<std::string>();
     } catch (const std::exception& e) {
-      log::errorln(e.what());
+      log::get()->errorln(e.what());
       throw std::logic_error("failed to get proxy.");
     }
   }
@@ -208,7 +208,7 @@ class Controller {
       auto j = nlohmann::json::parse(res->body);
       return j["all"].get<std::vector<std::string>>();
     } catch (const std::exception& e) {
-      log::errorln(e.what());
+      log::get()->errorln(e.what());
       throw std::logic_error("failed to get proxies.");
     }
   }
@@ -219,14 +219,14 @@ class Controller {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Put(m_config->proxy_url, data, "text/plain");
       if (!res) {
-        log::errorln("failed to send request to set proxy.");
+        log::get()->errorln("failed to send request to set proxy.");
         return false;
       }
       if (get_proxy() != proxy) return false;
 
     } catch (const std::exception& e) {
-      log::errorln(e.what());
-      log::errorln("failed to set proxy.");
+      log::get()->errorln(e.what());
+      log::get()->errorln("failed to set proxy.");
       return false;
     }
     return true;
@@ -241,7 +241,7 @@ class Controller {
       auto j = nlohmann::json::parse(res->body);
       return str_mod(j["now"].get<std::string>());
     } catch (const std::exception& e) {
-      log::errorln(e.what());
+      log::get()->errorln(e.what());
       throw std::logic_error("failed to get mode.");
     }
   }
@@ -252,14 +252,14 @@ class Controller {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Put(m_config->mode_url, data, "text/plain");
       if (!res) {
-        log::errorln("failed to send request to set mode.");
+        log::get()->errorln("failed to send request to set mode.");
         return false;
       }
       if (get_mode() != m) return false;
 
     } catch (const std::exception& e) {
-      log::errorln(e.what());
-      log::errorln("failed to set mode");
+      log::get()->errorln(e.what());
+      log::get()->errorln("failed to set mode");
       return false;
     }
     return true;

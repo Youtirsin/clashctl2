@@ -2,38 +2,43 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 
 class log {
- public:
-  static void on(bool enable = true) noexcept { enabled() = enable; }
+public:
+  static std::shared_ptr<log> get() noexcept {
+    static log l;
+    return std::shared_ptr<log>(new log);
+  }
 
-  static bool with_log_file(const std::string& filename) noexcept {
+  void on(bool enable = true) noexcept { m_enabled = enable; }
+
+  bool with_log_file(const std::string &filename) noexcept {
     try {
-      file().open(filename);
-      use_file() = true;
-    } catch (const std::exception& e) {
+      m_writer.open(filename);
+      m_use_file = true;
+    } catch (const std::exception &e) {
       return false;
     }
     return true;
   }
 
   template <class T, class... Rest>
-  static void errorln(T&& val, Rest... rest) noexcept {
+  void errorln(T &&val, Rest... rest) noexcept {
     error(std::forward<T>(val), rest...);
     endl();
   }
 
   template <class T, class... Rest>
-  static void infoln(T&& val, Rest... rest) noexcept {
+  void infoln(T &&val, Rest... rest) noexcept {
     info(std::forward<T>(val), rest...);
     endl();
   }
 
-  template <class T, class... Rest>
-  static void error(T&& val, Rest... rest) noexcept {
-    if (!enabled()) return;
-    if (use_file()) {
-      file() << "[ERROR] ";
+  template <class T, class... Rest> void error(T &&val, Rest... rest) noexcept {
+    if (!m_enabled) return;
+    if (m_use_file) {
+      m_writer << "[ERROR] ";
       file_out(std::forward<T>(val), rest...);
     } else {
       std::cerr << "[ERROR] ";
@@ -41,11 +46,10 @@ class log {
     }
   }
 
-  template <class T, class... Rest>
-  static void info(T&& val, Rest... rest) noexcept {
-    if (!enabled()) return;
-    if (use_file()) {
-      file() << "[INFO] ";
+  template <class T, class... Rest> void info(T &&val, Rest... rest) noexcept {
+    if (!m_enabled) return;
+    if (m_use_file) {
+      m_writer << "[INFO] ";
       file_out(std::forward<T>(val), rest...);
     } else {
       std::cout << "[INFO] ";
@@ -53,45 +57,39 @@ class log {
     }
   }
 
- private:
+private:
+  log() noexcept : m_enabled(true), m_use_file(false) {}
+
   template <class T, class... Rest>
-  static void error_(T&& val, Rest... rest) noexcept {
+  void error_(T &&val, Rest... rest) noexcept {
     std::cerr << std::forward<T>(val);
-    if constexpr (sizeof...(Rest)) error_(rest...);
+    if constexpr (sizeof...(Rest))
+      error_(rest...);
   }
 
-  template <class T, class... Rest>
-  static void info_(T&& val, Rest... rest) noexcept {
+  template <class T, class... Rest> void info_(T &&val, Rest... rest) noexcept {
     std::cerr << std::forward<T>(val);
-    if constexpr (sizeof...(Rest)) info_(rest...);
+    if constexpr (sizeof...(Rest))
+      info_(rest...);
   }
 
   template <class T, class... Rest>
-  static void file_out(T&& val, Rest... rest) noexcept {
-    file() << std::forward<T>(val);
-    if constexpr (sizeof...(Rest)) file_out(rest...);
+  void file_out(T &&val, Rest... rest) noexcept {
+    m_writer << std::forward<T>(val);
+    if constexpr (sizeof...(Rest))
+      file_out(rest...);
   }
 
-  static void endl() noexcept {
-    if (!enabled()) return;
-    if (use_file())
-      file() << std::endl;
+  void endl() noexcept {
+    if (!m_enabled) return;
+    if (m_use_file)
+      m_writer << std::endl;
     else
       std::cerr << std::endl;
   }
 
-  static bool& enabled() noexcept {
-    static bool e = true;
-    return e;
-  }
-
-  static bool& use_file() noexcept {
-    static bool u = false;
-    return u;
-  }
-
-  static std::ofstream& file() noexcept {
-    static std::ofstream f;
-    return f;
-  }
+private:
+  bool m_enabled, m_use_file;
+  std::ofstream m_writer;
 };
+
