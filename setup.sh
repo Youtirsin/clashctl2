@@ -9,24 +9,20 @@ requirements=("cmake" "curl" "make" "g++")
 
 config_file_path="$HOME/clashctl/config/config.yaml"
 
-function info()
-{
+function info() {
   echo "[INFO] $@"
 }
 
-function error()
-{
+function error() {
   echo "[ERROR] $@" >&2
 }
 
-function fail()
-{
+function fail() {
   error $@
   exit 1
 }
 
-function check_for_file()
-{
+function check_for_file() {
   if [ ! -e "$1" ]; then
     error "missing file: $1"
     return 0
@@ -34,8 +30,7 @@ function check_for_file()
   return 1
 }
 
-function check_installed()
-{
+function check_installed() {
   local exe_name=$1
   if which "$exe_name" >/dev/null 2>&1; then
     info "$exe_name has been installed."
@@ -46,8 +41,7 @@ function check_installed()
   fi
 }
 
-function check_requirements_needed()
-{
+function check_requirements_needed() {
   requirements_needed=()
   for r in "${requirements[@]}"; do
     check_installed $r
@@ -57,8 +51,7 @@ function check_requirements_needed()
   done
 }
 
-function ensure_requirements_installed()
-{
+function ensure_requirements_installed() {
   check_requirements_needed
   if [ ${#requirements_needed[@]} -eq 0 ]; then
     info "all requirements have been installed."
@@ -78,8 +71,7 @@ function ensure_requirements_installed()
   fail "failed to install all requirements."
 }
 
-function build()
-{
+function build() {
   ensure_requirements_installed
 
   rm -rf build
@@ -88,8 +80,7 @@ function build()
   cd ..
 }
 
-function maybe_backup_clash_config()
-{
+function maybe_backup_clash_config() {
   check_for_file $config_file_path
   if [[ $? -eq 0 ]]; then
     return 0
@@ -101,14 +92,12 @@ function maybe_backup_clash_config()
   return 1
 }
 
-function recover_clash_config()
-{
+function recover_clash_config() {
   info "recovering config file."
   cp config_backup/config.yaml $config_file_path
 }
 
-function setup()
-{
+function setup() {
   build
   maybe_backup_clash_config
   local config_backed_up=$?

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <exception>
@@ -65,23 +66,26 @@ struct Config {
   const std::string proxy_url;
 };
 
-enum class mode { DIRECT, Proxies };
+class Mode {
+ public:
+  static const std::vector<std::string>& modes() noexcept {
+    static std::vector<std::string> modes_ = {"DIRECT", "Proxies"};
+    return modes_;
+  }
 
-inline std::vector<std::string> mod_strs() noexcept {
-  return {"DIRECT", "Proxies"};
-}
+  Mode(const std::string& str) {
+    const auto& modes_ = modes();
+    auto it = std::find(modes_.begin(), modes_.end(), str);
+    if (it == modes_.end()) throw std::logic_error("invalid mode string.");
 
-inline std::string mod_str(mode m) noexcept {
-  if (m == mode::DIRECT) return "DIRECT";
-  if (m == mode::Proxies) return "Proxies";
-  return "";
-}
+    m_str = *it;
+  }
 
-inline mode str_mod(std::string str) {
-  if (str == "DIRECT") return mode::DIRECT;
-  if (str == "Proxies") return mode::Proxies;
-  throw std::logic_error("invalid mode string.");
-}
+  std::string str() const noexcept { return std::string(m_str); }
+
+ private:
+  std::string_view m_str;
+};
 
 class Controller {
  public:
@@ -97,7 +101,9 @@ class Controller {
       return false;
     }
     log::get()->infoln("starting clash server.");
-    if (quicky::run_background(m_config->clash_exe + " -d " + m_config->clash_config, m_config->clash_log)) {
+    if (quicky::run_background(
+            m_config->clash_exe + " -d " + m_config->clash_config,
+            m_config->clash_log)) {
       log::get()->errorln("failed to start clash server.");
       return false;
     }
@@ -232,30 +238,30 @@ class Controller {
     return true;
   }
 
-  mode get_mode() const {
+  std::string get_mode() const {
     try {
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Get(m_config->mode_url);
       if (!res) throw std::logic_error("failed to send request to get mode.");
 
       auto j = nlohmann::json::parse(res->body);
-      return str_mod(j["now"].get<std::string>());
+      return Mode(j["now"].get<std::string>()).str();
     } catch (const std::exception& e) {
       log::get()->errorln(e.what());
       throw std::logic_error("failed to get mode.");
     }
   }
 
-  bool set_mode(mode m) const noexcept {
+  bool set_mode(const std::string& mode) const noexcept {
     try {
-      const std::string data = "{\"name\": \"" + mod_str(m) + "\"}";
+      const std::string data = "{\"name\": \"" + mode + "\"}";
       httplib::Client cli(m_config->controller_endpoint);
       auto res = cli.Put(m_config->mode_url, data, "text/plain");
       if (!res) {
         log::get()->errorln("failed to send request to set mode.");
         return false;
       }
-      if (get_mode() != m) return false;
+      if (get_mode() != mode) return false;
 
     } catch (const std::exception& e) {
       log::get()->errorln(e.what());

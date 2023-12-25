@@ -149,10 +149,9 @@ class commands {
     auto config = clashctl::Config::Default();
     clashctl::Controller controller(config);
 
-    auto mode_ = controller.get_mode();
-    auto mode = mod_str(mode_);
+    auto mode = controller.get_mode();
 
-    auto modes = clashctl::mod_strs();
+    auto modes = clashctl::Mode::modes();
     Menu menu(modes);
 
     menu.on_opt_show([&](int, const std::string& opt) {
@@ -160,9 +159,10 @@ class commands {
     });
 
     menu.on_opt_enter([&](int, const std::string& opt) {
-      if (!controller.set_mode(clashctl::str_mod(opt)))
+      if (!controller.set_mode(opt))
         quicky::error("failed to set mode to ", opt);
-      quicky::infoln("current mode: ", clashctl::mod_str(controller.get_mode()));
+
+      quicky::infoln("current mode: ", controller.get_mode());
       return true;
     });
 
