@@ -7,8 +7,8 @@
 class log {
 public:
   static std::shared_ptr<log> get() noexcept {
-    static log l;
-    return std::shared_ptr<log>(new log);
+    static auto l = std::shared_ptr<log>(new log);
+    return l;
   }
 
   void on(bool enable = true) noexcept { m_enabled = enable; }
