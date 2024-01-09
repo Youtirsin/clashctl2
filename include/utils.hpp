@@ -6,90 +6,55 @@
 #include <vector>
 
 namespace quicky {
-// print
-template <class T, class... Rest>
-static void error_(T&& val, Rest... rest) noexcept {
-  std::cerr << std::forward<T>(val);
-  if constexpr (sizeof...(Rest)) error_(rest...);
-}
 
-template <class T, class... Rest>
-static void info_(T&& val, Rest... rest) noexcept {
-  std::cout << std::forward<T>(val);
-  if constexpr (sizeof...(Rest)) info_(rest...);
-}
-
-template <class T, class... Rest>
-void error(T&& val, Rest... rest) noexcept {
-  std::cerr << "[ERROR] ";
-  error_(std::forward<T>(val), rest...);
-}
-
-template <class T, class... Rest>
-void info(T&& val, Rest... rest) noexcept {
+inline auto& info() noexcept {
   std::cout << "[INFO] ";
-  info_(std::forward<T>(val), rest...);
+  return std::cout;
 }
 
-template <class T, class... Rest>
-void errorln(T&& val, Rest... rest) noexcept {
-  error(std::forward<T>(val), rest...);
-  std::cerr << std::endl;
+inline auto& error() noexcept {
+  std::cerr << "[ERROR] ";
+  return std::cerr;
 }
 
-template <class T, class... Rest>
-void infoln(T&& val, Rest... rest) noexcept {
-  info(std::forward<T>(val), rest...);
-  std::cout << std::endl;
+inline void infoln(const char* message) noexcept {
+  info() << message << std::endl;
 }
-// self info
-class ExeSelfInfo {
+
+inline void errorln(const char* message) noexcept {
+  error() << message << std::endl;
+}
+
+class ExeInfo {
  public:
-  static void parse(const std::string& arg0) noexcept {
-    m_arg0() = arg0;
+  ExeInfo(std::string&& arg0) noexcept : m_arg0(std::move(arg0)) {
     std::filesystem::path p(arg0);
-    m_name() = p.filename();
-    m_dir() = p.parent_path();
+    m_name = p.filename();
+    m_dir = p.parent_path();
   }
 
-  static std::string& arg0() noexcept { return m_arg0(); }
+  const std::string& arg0() const noexcept { return m_arg0; }
 
-  static std::string name() noexcept { return m_name(); }
+  const std::string& name() const noexcept { return m_name; }
 
-  static std::string dir() noexcept { return m_dir(); }
+  const std::string& dir() const noexcept { return m_dir; }
 
  private:
-  static std::string& m_name() noexcept {
-    static std::string name;
-    return name;
-  }
-
-  static std::string& m_dir() noexcept {
-    static std::string dir;
-    return dir;
-  }
-
-  static std::string& m_arg0() noexcept {
-    static std::string dir;
-    return dir;
-  }
+  std::string m_arg0, m_name, m_dir;
 };
 
-// args
 class Args {
  public:
-  static void parse(int argc, char** argv) noexcept {
-    args().clear();
-    for (size_t i = 1; i < argc; ++i) args().push_back(argv[i]);
+  Args(int argc, char** argv) noexcept {
+    for (size_t i = 1; i < argc; ++i) {
+      m_args.push_back(argv[i]);
+    }
   }
 
-  static std::vector<std::string>& get() noexcept { return args(); }
+  const std::vector<std::string>& get() const noexcept { return m_args; }
 
  private:
-  static std::vector<std::string>& args() noexcept {
-    static std::vector<std::string> args;
-    return args;
-  }
+  std::vector<std::string> m_args;
 };
 
 // process
@@ -153,4 +118,5 @@ inline std::string trim_url(const std::string& url) noexcept {
   else
     return url;
 }
+
 };  // namespace quicky

@@ -7,8 +7,6 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  commands::handle(argc, argv);
-
-  return 1;
+  clashctl::Commands commands(argc, argv);
+  return commands.run();
 }
-

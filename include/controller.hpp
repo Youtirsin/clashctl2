@@ -4,24 +4,17 @@
 #include <chrono>
 #include <cstdlib>
 #include <exception>
-#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 
-#include "log.hpp"
-#include "third-party/httplib.h"
 #include "third-party/nlohmann/json.hpp"
+#include "third-party/yhirose/httplib.h"
 #include "utils.hpp"
 
 namespace clashctl {
 struct Config {
-  static std::shared_ptr<Config> Default() noexcept {
-    std::shared_ptr<Config> config(new Config);
-    return config;
-  }
-
- private:
   Config() noexcept
       // : clash_path(quicky::current_path() + "/clashctl"),
       : clash_path(std::string(getenv("HOME")) + "/clashctl"),
@@ -35,11 +28,6 @@ struct Config {
         controller_endpoint("localhost:9090"),
         mode_url("/proxies/Final"),
         proxy_url("/proxies/Proxies") {}
-
-  Config(const Config&) = default;
-  Config(Config&&) = default;
-  Config& operator=(const Config&) = delete;
-  Config& operator=(Config&&) = delete;
 
  public:
   // the path to the clashctl directory
@@ -76,8 +64,9 @@ class Mode {
   Mode(const std::string& str) {
     const auto& modes_ = modes();
     auto it = std::find(modes_.begin(), modes_.end(), str);
-    if (it == modes_.end()) throw std::logic_error("invalid mode string.");
-
+    if (it == modes_.end()) {
+      throw std::logic_error("invalid mode string.");
+    }
     m_str = *it;
   }
 
@@ -89,7 +78,7 @@ class Mode {
 
 class Controller {
  public:
-  Controller(std::shared_ptr<Config> config) noexcept : m_config(config) {}
+  Controller(Config& config) noexcept : m_config(config) {}
 
   // start clash
   // 1. prepare empty log file for clash
@@ -97,18 +86,18 @@ class Controller {
   // 3. connection test
   bool start() const noexcept {
     if (!rm_log() || !touch_log()) {
-      log::get()->errorln("failed to prepare log file.");
+      quicky::errorln("failed to prepare log file.");
       return false;
     }
-    log::get()->infoln("starting clash server.");
+    quicky::info() << "starting clash server." << std::endl;
     if (quicky::run_background(
-            m_config->clash_exe + " -d " + m_config->clash_config,
-            m_config->clash_log)) {
-      log::get()->errorln("failed to start clash server.");
+            m_config.clash_exe + " -d " + m_config.clash_config,
+            m_config.clash_log)) {
+      quicky::errorln("failed to start clash server.");
       return false;
     }
     if (!ping()) {
-      log::get()->errorln("clash is not available.");
+      quicky::errorln("clash is not available.");
       stop();
       return false;
     }
@@ -117,7 +106,7 @@ class Controller {
 
   // stop clash
   // kill clash running background
-  void stop() const noexcept { quicky::kill(m_config->clash_exe); }
+  void stop() const noexcept { quicky::kill(m_config.clash_exe); }
 
   // reload clash
   // call stop and start
@@ -132,8 +121,8 @@ class Controller {
   // 3. unset http proxy
   bool ping() const noexcept {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    setenv("http_proxy", m_config->proxy_endpoint.c_str(), 1);
-    setenv("https_proxy", m_config->proxy_endpoint.c_str(), 1);
+    setenv("http_proxy", m_config.proxy_endpoint.c_str(), 1);
+    setenv("https_proxy", m_config.proxy_endpoint.c_str(), 1);
 
     int res = quicky::run("curl -s --connect-timeout 2 google.com");
 
@@ -149,39 +138,40 @@ class Controller {
   // 4. test connection by calling reload and ping
   // 5. stop the clash running for testing
   bool update(const std::string& url) const noexcept {
-    auto& updateFile = m_config->update_temp_file;
-    auto& configFile = m_config->clash_config_file;
+    auto& updateFile = m_config.update_temp_file;
+    auto& configFile = m_config.clash_config_file;
 
     if (url.size() < 2) {
-      log::get()->errorln("invalid url.");
+      quicky::errorln("invalid url.");
       return false;
     }
 
     if (quicky::download_file(quicky::trim_url(url), updateFile)) {
-      log::get()->errorln("failed to download config file.");
+      quicky::errorln("failed to download config file.");
       return false;
     }
 
     if (quicky::exists(configFile)) {
-      log::get()->infoln("backing up old config file.");
+      quicky::infoln("backing up old config file.");
       if (!quicky::cp(configFile, configFile + ".backup")) {
-        log::get()->errorln("failed to backup old config file.");
+        quicky::errorln("failed to backup old config file.");
         return false;
       }
     }
 
-    log::get()->infoln("updating config file.");
+    quicky::infoln("updating config file.");
     if (!quicky::cp(updateFile, configFile)) {
-      log::get()->errorln("failed to update config file.");
+      quicky::errorln("failed to update config file.");
       return false;
     }
 
-    log::get()->infoln("testing new config file.");
+    quicky::infoln("testing new config file.");
     if (!reload() || !ping()) {
-      log::get()->errorln("invalid config file. recovering old config file.");
+      quicky::errorln("invalid config file. recovering old config file.");
       if (quicky::exists(configFile + ".backup")) {
-        if (!quicky::cp(configFile + ".backup", configFile))
-          log::get()->errorln("failed to recover old config file.");
+        if (!quicky::cp(configFile + ".backup", configFile)) {
+          quicky::errorln("failed to recover old config file.");
+        }
       }
       stop();
       return false;
@@ -190,82 +180,84 @@ class Controller {
     return true;
   }
 
-  std::string get_proxy() const {
+  std::string get_proxy() const noexcept {
     try {
-      httplib::Client cli(m_config->controller_endpoint);
-      auto res = cli.Get(m_config->proxy_url);
-      if (!res) throw std::logic_error("failed to send request to get proxy.");
-
+      httplib::Client cli(m_config.controller_endpoint);
+      auto res = cli.Get(m_config.proxy_url);
+      if (!res) {
+        throw std::logic_error("failed to send request to get proxy.");
+      }
       auto j = nlohmann::json::parse(res->body);
       return j["now"].get<std::string>();
     } catch (const std::exception& e) {
-      log::get()->errorln(e.what());
-      throw std::logic_error("failed to get proxy.");
+      quicky::errorln(e.what());
+      return "";
     }
   }
 
-  std::vector<std::string> get_proxies() const {
+  std::optional<std::vector<std::string>> get_proxies() const {
     try {
-      httplib::Client cli(m_config->controller_endpoint);
-      auto res = cli.Get(m_config->proxy_url);
-      if (!res)
+      httplib::Client cli(m_config.controller_endpoint);
+      auto res = cli.Get(m_config.proxy_url);
+      if (!res) {
         throw std::logic_error("failed to send request to get proxies.");
-
+      }
       auto j = nlohmann::json::parse(res->body);
       return j["all"].get<std::vector<std::string>>();
     } catch (const std::exception& e) {
-      log::get()->errorln(e.what());
-      throw std::logic_error("failed to get proxies.");
+      quicky::errorln(e.what());
+      return std::nullopt;
     }
   }
 
   bool set_proxy(const std::string& proxy) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + proxy + "\"}";
-      httplib::Client cli(m_config->controller_endpoint);
-      auto res = cli.Put(m_config->proxy_url, data, "text/plain");
+      httplib::Client cli(m_config.controller_endpoint);
+      auto res = cli.Put(m_config.proxy_url, data, "text/plain");
       if (!res) {
-        log::get()->errorln("failed to send request to set proxy.");
+        quicky::errorln("failed to send request to set proxy.");
         return false;
       }
       if (get_proxy() != proxy) return false;
 
     } catch (const std::exception& e) {
-      log::get()->errorln(e.what());
-      log::get()->errorln("failed to set proxy.");
+      quicky::errorln(e.what());
+      quicky::errorln("failed to set proxy.");
       return false;
     }
     return true;
   }
 
-  std::string get_mode() const {
+  std::string get_mode() const noexcept {
     try {
-      httplib::Client cli(m_config->controller_endpoint);
-      auto res = cli.Get(m_config->mode_url);
-      if (!res) throw std::logic_error("failed to send request to get mode.");
-
+      httplib::Client cli(m_config.controller_endpoint);
+      auto res = cli.Get(m_config.mode_url);
+      if (!res) {
+        throw std::logic_error("failed to send request to get mode.");
+      }
       auto j = nlohmann::json::parse(res->body);
       return Mode(j["now"].get<std::string>()).str();
     } catch (const std::exception& e) {
-      log::get()->errorln(e.what());
-      throw std::logic_error("failed to get mode.");
+      quicky::errorln(e.what());
+      return "";
     }
   }
 
   bool set_mode(const std::string& mode) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + mode + "\"}";
-      httplib::Client cli(m_config->controller_endpoint);
-      auto res = cli.Put(m_config->mode_url, data, "text/plain");
+      httplib::Client cli(m_config.controller_endpoint);
+      auto res = cli.Put(m_config.mode_url, data, "text/plain");
       if (!res) {
-        log::get()->errorln("failed to send request to set mode.");
+        quicky::errorln("failed to send request to set mode.");
         return false;
       }
       if (get_mode() != mode) return false;
 
     } catch (const std::exception& e) {
-      log::get()->errorln(e.what());
-      log::get()->errorln("failed to set mode");
+      quicky::errorln(e.what());
+      quicky::errorln("failed to set mode");
       return false;
     }
     return true;
@@ -273,17 +265,17 @@ class Controller {
 
  private:
   bool rm_log() const noexcept {
-    if (quicky::exists(m_config->clash_log)) {
-      if (!quicky::rm(m_config->clash_log)) return false;
+    if (quicky::exists(m_config.clash_log)) {
+      if (!quicky::rm(m_config.clash_log)) return false;
     }
     return true;
   }
 
   bool touch_log() const noexcept {
-    return quicky::run("touch " + m_config->clash_log) == 0;
+    return quicky::run("touch " + m_config.clash_log) == 0;
   }
 
  private:
-  std::shared_ptr<Config> m_config;
+  Config& m_config;
 };
 }  // namespace clashctl
