@@ -23,7 +23,7 @@ class Commands {
   Commands(int argc, char** argv) noexcept
       : m_controller(m_config),
         m_args(argc, argv),
-        m_exe_info(std::string(argv[0])),
+        m_exe_info(argv[0]),
         m_options(init_opts()) {}
 
   int run() noexcept {

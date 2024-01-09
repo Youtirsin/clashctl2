@@ -27,7 +27,9 @@ inline void errorln(const char* message) noexcept {
 
 class ExeInfo {
  public:
-  ExeInfo(std::string&& arg0) noexcept : m_arg0(std::move(arg0)) {
+  template <class string_type = std::string>
+  ExeInfo(string_type&& arg0) noexcept
+      : m_arg0(std::forward<string_type>(arg0)) {
     std::filesystem::path p(arg0);
     m_name = p.filename();
     m_dir = p.parent_path();
