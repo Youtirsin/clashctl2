@@ -67,18 +67,18 @@ class Mode {
     if (it == modes_.end()) {
       throw std::logic_error("invalid mode string.");
     }
-    m_str = *it;
+    str_ = *it;
   }
 
-  std::string str() const noexcept { return std::string(m_str); }
+  std::string str() const noexcept { return std::string(str_); }
 
  private:
-  std::string_view m_str;
+  std::string_view str_;
 };
 
 class Controller {
  public:
-  Controller(Config& config) noexcept : m_config(config) {}
+  Controller(Config& config) noexcept : config_(config) {}
 
   // start clash
   // 1. prepare empty log file for clash
@@ -91,8 +91,8 @@ class Controller {
     }
     quicky::info() << "starting clash server." << std::endl;
     if (quicky::run_background(
-            m_config.clash_exe + " -d " + m_config.clash_config,
-            m_config.clash_log)) {
+            config_.clash_exe + " -d " + config_.clash_config,
+            config_.clash_log)) {
       quicky::errorln("failed to start clash server.");
       return false;
     }
@@ -106,7 +106,7 @@ class Controller {
 
   // stop clash
   // kill clash running background
-  void stop() const noexcept { quicky::kill(m_config.clash_exe); }
+  void stop() const noexcept { quicky::kill(config_.clash_exe); }
 
   // reload clash
   // call stop and start
@@ -121,8 +121,8 @@ class Controller {
   // 3. unset http proxy
   bool ping() const noexcept {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    setenv("http_proxy", m_config.proxy_endpoint.c_str(), 1);
-    setenv("https_proxy", m_config.proxy_endpoint.c_str(), 1);
+    setenv("http_proxy", config_.proxy_endpoint.c_str(), 1);
+    setenv("https_proxy", config_.proxy_endpoint.c_str(), 1);
 
     int res = quicky::run("curl -s --connect-timeout 2 google.com");
 
@@ -138,8 +138,8 @@ class Controller {
   // 4. test connection by calling reload and ping
   // 5. stop the clash running for testing
   bool update(const std::string& url) const noexcept {
-    auto& updateFile = m_config.update_temp_file;
-    auto& configFile = m_config.clash_config_file;
+    auto& updateFile = config_.update_temp_file;
+    auto& configFile = config_.clash_config_file;
 
     if (url.size() < 2) {
       quicky::errorln("invalid url.");
@@ -182,8 +182,8 @@ class Controller {
 
   std::string get_proxy() const noexcept {
     try {
-      httplib::Client cli(m_config.controller_endpoint);
-      auto res = cli.Get(m_config.proxy_url);
+      httplib::Client cli(config_.controller_endpoint);
+      auto res = cli.Get(config_.proxy_url);
       if (!res) {
         throw std::logic_error("failed to send request to get proxy.");
       }
@@ -197,8 +197,8 @@ class Controller {
 
   std::optional<std::vector<std::string>> get_proxies() const {
     try {
-      httplib::Client cli(m_config.controller_endpoint);
-      auto res = cli.Get(m_config.proxy_url);
+      httplib::Client cli(config_.controller_endpoint);
+      auto res = cli.Get(config_.proxy_url);
       if (!res) {
         throw std::logic_error("failed to send request to get proxies.");
       }
@@ -213,8 +213,8 @@ class Controller {
   bool set_proxy(const std::string& proxy) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + proxy + "\"}";
-      httplib::Client cli(m_config.controller_endpoint);
-      auto res = cli.Put(m_config.proxy_url, data, "text/plain");
+      httplib::Client cli(config_.controller_endpoint);
+      auto res = cli.Put(config_.proxy_url, data, "text/plain");
       if (!res) {
         quicky::errorln("failed to send request to set proxy.");
         return false;
@@ -231,8 +231,8 @@ class Controller {
 
   std::string get_mode() const noexcept {
     try {
-      httplib::Client cli(m_config.controller_endpoint);
-      auto res = cli.Get(m_config.mode_url);
+      httplib::Client cli(config_.controller_endpoint);
+      auto res = cli.Get(config_.mode_url);
       if (!res) {
         throw std::logic_error("failed to send request to get mode.");
       }
@@ -247,8 +247,8 @@ class Controller {
   bool set_mode(const std::string& mode) const noexcept {
     try {
       const std::string data = "{\"name\": \"" + mode + "\"}";
-      httplib::Client cli(m_config.controller_endpoint);
-      auto res = cli.Put(m_config.mode_url, data, "text/plain");
+      httplib::Client cli(config_.controller_endpoint);
+      auto res = cli.Put(config_.mode_url, data, "text/plain");
       if (!res) {
         quicky::errorln("failed to send request to set mode.");
         return false;
@@ -265,17 +265,17 @@ class Controller {
 
  private:
   bool rm_log() const noexcept {
-    if (quicky::exists(m_config.clash_log)) {
-      if (!quicky::rm(m_config.clash_log)) return false;
+    if (quicky::exists(config_.clash_log)) {
+      if (!quicky::rm(config_.clash_log)) return false;
     }
     return true;
   }
 
   bool touch_log() const noexcept {
-    return quicky::run("touch " + m_config.clash_log) == 0;
+    return quicky::run("touch " + config_.clash_log) == 0;
   }
 
  private:
-  Config& m_config;
+  Config& config_;
 };
 }  // namespace clashctl

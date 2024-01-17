@@ -29,34 +29,34 @@ class ExeInfo {
  public:
   template <class string_type = std::string>
   ExeInfo(string_type&& arg0) noexcept
-      : m_arg0(std::forward<string_type>(arg0)) {
+      : arg0_(std::forward<string_type>(arg0)) {
     std::filesystem::path p(arg0);
-    m_name = p.filename();
-    m_dir = p.parent_path();
+    name_ = p.filename();
+    dir_ = p.parent_path();
   }
 
-  const std::string& arg0() const noexcept { return m_arg0; }
+  const std::string& arg0() const noexcept { return arg0_; }
 
-  const std::string& name() const noexcept { return m_name; }
+  const std::string& name() const noexcept { return name_; }
 
-  const std::string& dir() const noexcept { return m_dir; }
+  const std::string& dir() const noexcept { return dir_; }
 
  private:
-  std::string m_arg0, m_name, m_dir;
+  std::string arg0_, name_, dir_;
 };
 
 class Args {
  public:
   Args(int argc, char** argv) noexcept {
     for (size_t i = 1; i < argc; ++i) {
-      m_args.push_back(argv[i]);
+      args_.push_back(argv[i]);
     }
   }
 
-  const std::vector<std::string>& get() const noexcept { return m_args; }
+  const std::vector<std::string>& get() const noexcept { return args_; }
 
  private:
-  std::vector<std::string> m_args;
+  std::vector<std::string> args_;
 };
 
 // process

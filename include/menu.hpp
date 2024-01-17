@@ -41,19 +41,19 @@ class RawMode {
 class Menu {
  public:
   Menu(std::vector<std::string>&& opts) noexcept
-      : m_opts(std::move(opts)),
-        m_idx(0),
-        m_opt_fn([](int, const std::string& opt) { return opt; }),
-        m_opt_enter_fn([](int, const std::string&) { return true; }) {}
+      : opts_(std::move(opts)),
+        idx_(0),
+        opt_fn_([](int, const std::string& opt) { return opt; }),
+        opt_enter_fn_([](int, const std::string&) { return true; }) {}
 
   void on_opt_show(
       std::function<std::string(int, const std::string&)>&& fn) noexcept {
-    m_opt_fn = std::move(fn);
+    opt_fn_ = std::move(fn);
   }
 
   void on_opt_enter(
       std::function<bool(int, const std::string&)>&& fn) noexcept {
-    m_opt_enter_fn = std::move(fn);
+    opt_enter_fn_ = std::move(fn);
   }
 
   bool main() {
@@ -73,7 +73,7 @@ class Menu {
         right();
       else if (c == '\r' || c == '\n') {
         std::system("clear");
-        return m_opt_enter_fn(m_idx, m_opts[m_idx]);
+        return opt_enter_fn_(idx_, opts_[idx_]);
       }
     }
     return true;
@@ -81,13 +81,13 @@ class Menu {
 
   void show() noexcept {
     std::system("clear");
-    const int start = m_idx / MAX * MAX;
-    const int end = m_idx / MAX * MAX + MAX;
-    for (int i = start; i < m_opts.size() && i < end; ++i) {
-      if (i == m_idx) {
-        std::cout << m_opt_fn(i, m_opts[i]) << " 👈" << std::endl;
+    const int start = idx_ / MAX * MAX;
+    const int end = idx_ / MAX * MAX + MAX;
+    for (int i = start; i < opts_.size() && i < end; ++i) {
+      if (i == idx_) {
+        std::cout << opt_fn_(i, opts_[i]) << " 👈" << std::endl;
       } else {
-        std::cout << m_opt_fn(i, m_opts[i]) << std::endl;
+        std::cout << opt_fn_(i, opts_[i]) << std::endl;
       }
     }
 
@@ -96,29 +96,29 @@ class Menu {
   }
 
   bool up() noexcept {
-    if (m_idx <= 0) return false;
-    --m_idx;
+    if (idx_ <= 0) return false;
+    --idx_;
     show();
     return true;
   }
 
   bool down() noexcept {
-    if (m_idx >= m_opts.size() - 1) return false;
-    ++m_idx;
+    if (idx_ >= opts_.size() - 1) return false;
+    ++idx_;
     show();
     return true;
   }
 
   bool left() noexcept {
-    if (m_idx - MAX < 0) return false;
-    m_idx -= MAX;
+    if (idx_ - MAX < 0) return false;
+    idx_ -= MAX;
     show();
     return true;
   }
 
   bool right() noexcept {
-    if (m_idx + MAX >= m_opts.size() - 1) return false;
-    m_idx += MAX;
+    if (idx_ + MAX >= opts_.size() - 1) return false;
+    idx_ += MAX;
     show();
     return true;
   }
@@ -126,8 +126,8 @@ class Menu {
  private:
   static constexpr int MAX = 10;
 
-  int m_idx;
-  std::vector<std::string> m_opts;
-  std::function<bool(int, const std::string&)> m_opt_enter_fn;
-  std::function<std::string(int, const std::string&)> m_opt_fn;
+  int idx_;
+  std::vector<std::string> opts_;
+  std::function<bool(int, const std::string&)> opt_enter_fn_;
+  std::function<std::string(int, const std::string&)> opt_fn_;
 };
