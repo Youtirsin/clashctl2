@@ -1,9 +1,17 @@
 #pragma once
 
+/*
+ * Headers
+ */
+
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
+
+/*
+ * Declaration
+ */
 
 namespace quicky {
 
@@ -28,12 +36,7 @@ inline void errorln(const char* message) noexcept {
 class ExeInfo {
  public:
   template <class string_type = std::string>
-  ExeInfo(string_type&& arg0) noexcept
-      : arg0_(std::forward<string_type>(arg0)) {
-    std::filesystem::path p(arg0);
-    name_ = p.filename();
-    dir_ = p.parent_path();
-  }
+  ExeInfo(string_type&& arg0) noexcept;
 
   const std::string& arg0() const noexcept { return arg0_; }
 
@@ -60,28 +63,22 @@ class Args {
 };
 
 // process
-inline int run(const std::string& cmd,
-               const std::string& out_filepath = "") noexcept {
-  if (out_filepath.empty())
-    return std::system((cmd + " > /dev/null 2>&1").c_str());
-  return std::system((cmd + " > " + out_filepath + " 2>&1").c_str());
-}
+int run(const std::string& cmd, const std::string& out_filepath = "") noexcept;
 
-inline int run_background(const std::string& cmd,
-                          const std::string& out_filepath = "") noexcept {
-  if (out_filepath.empty())
-    return std::system(("nohup " + cmd + " > /dev/null 2>&1 &").c_str());
-  return std::system(
-      ("nohup " + cmd + " > " + out_filepath + " 2>&1 &").c_str());
-}
+int run_background(const std::string& cmd,
+                   const std::string& out_filepath = "") noexcept;
 
-inline bool has_curl() noexcept { return run("curl --version") == 0; }
+bool has_curl() noexcept;
 
 inline int kill(const std::string& name) noexcept {
   return run("pkill -9 -f " + name);
 }
 
 // fs
+std::string current_path() noexcept;
+
+bool exists(const std::string& filepath) noexcept;
+
 inline std::string current_path() noexcept {
   return std::filesystem::current_path();
 }
@@ -90,6 +87,62 @@ inline bool exists(const std::string& filepath) noexcept {
   return std::filesystem::exists(filepath);
 }
 
+bool rm(const std::string& filepath) noexcept;
+
+bool cp(const std::string& from, const std::string& to) noexcept;
+
+// web
+inline int download_file(const std::string& url,
+                         const std::string& filepath) noexcept {
+  return run("curl -o " + filepath + " \"" + url + "\"");
+}
+
+std::string trim_url(const std::string& url) noexcept;
+
+}  // namespace quicky
+
+/*
+ * Implementation of template methods.
+ */
+
+namespace quicky {
+
+template <class string_type>
+ExeInfo::ExeInfo(string_type&& arg0) noexcept
+    : arg0_(std::forward<string_type>(arg0)) {
+  std::filesystem::path p(arg0);
+  name_ = p.filename();
+  dir_ = p.parent_path();
+}
+
+}  // namespace quicky
+
+/*
+ * Implementation that will be part of the .cpp file if split into .hpp and .cpp
+ * files.
+ */
+
+namespace quicky {
+
+// process
+inline int run(const std::string& cmd,
+               const std::string& out_filepath) noexcept {
+  if (out_filepath.empty())
+    return std::system((cmd + " > /dev/null 2>&1").c_str());
+  return std::system((cmd + " > " + out_filepath + " 2>&1").c_str());
+}
+
+inline int run_background(const std::string& cmd,
+                          const std::string& out_filepath) noexcept {
+  if (out_filepath.empty())
+    return std::system(("nohup " + cmd + " > /dev/null 2>&1 &").c_str());
+  return std::system(
+      ("nohup " + cmd + " > " + out_filepath + " 2>&1 &").c_str());
+}
+
+inline bool has_curl() noexcept { return run("curl --version") == 0; }
+
+// fs
 inline bool rm(const std::string& filepath) noexcept {
   try {
     return std::filesystem::remove(filepath);
@@ -108,17 +161,14 @@ inline bool cp(const std::string& from, const std::string& to) noexcept {
 }
 
 // web
-inline int download_file(const std::string& url,
-                         const std::string& filepath) noexcept {
-  return run("curl -o " + filepath + " \"" + url + "\"");
-}
 
 inline std::string trim_url(const std::string& url) noexcept {
   if (url.size() < 2) return url;
-  if (url.front() == '"' && url.back() == '"')
+  if (url.front() == '"' && url.back() == '"') {
     return url.substr(1, url.size() - 2);
-  else
+  } else {
     return url;
+  }
 }
 
-};  // namespace quicky
+}  // namespace quicky
