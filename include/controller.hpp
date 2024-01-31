@@ -206,29 +206,31 @@ inline bool Controller::ping() const noexcept {
 // 4. test connection by calling reload and ping
 // 5. stop the clash running for testing
 inline bool Controller::update(const std::string& url) const noexcept {
-  auto& updateFile = config_.update_temp_file;
-  auto& configFile = config_.clash_config_file;
+  auto& update_file = config_.update_temp_file;
+  auto& config_file = config_.clash_config_file;
 
   if (url.size() < 2) {
     quicky::errorln("invalid url.");
     return false;
   }
 
-  if (quicky::download_file(quicky::trim_url(url), updateFile)) {
+  setenv("http_proxy", "", 1);
+  setenv("https_proxy", "", 1);
+  if (quicky::download_file(quicky::trim_url(url), update_file)) {
     quicky::errorln("failed to download config file.");
     return false;
   }
 
-  if (quicky::exists(configFile)) {
+  if (quicky::exists(config_file)) {
     quicky::infoln("backing up old config file.");
-    if (!quicky::cp(configFile, configFile + ".backup")) {
+    if (!quicky::cp(config_file, config_file + ".backup")) {
       quicky::errorln("failed to backup old config file.");
       return false;
     }
   }
 
   quicky::infoln("updating config file.");
-  if (!quicky::cp(updateFile, configFile)) {
+  if (!quicky::cp(update_file, config_file)) {
     quicky::errorln("failed to update config file.");
     return false;
   }
@@ -236,8 +238,8 @@ inline bool Controller::update(const std::string& url) const noexcept {
   quicky::infoln("testing new config file.");
   if (!reload() || !ping()) {
     quicky::errorln("invalid config file. recovering old config file.");
-    if (quicky::exists(configFile + ".backup")) {
-      if (!quicky::cp(configFile + ".backup", configFile)) {
+    if (quicky::exists(config_file + ".backup")) {
+      if (!quicky::cp(config_file + ".backup", config_file)) {
         quicky::errorln("failed to recover old config file.");
       }
     }
